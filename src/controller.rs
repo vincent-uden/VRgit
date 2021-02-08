@@ -71,6 +71,8 @@ pub struct Controller {
     debug_string: String,
     commit_msg: String,
 
+    log_file: Option<File>,
+
 }
 
 impl Controller {
@@ -97,6 +99,7 @@ impl Controller {
             enabled_commit_args: HashSet::new(),
             debug_string: String::new(),
             commit_msg: String::new(),
+            log_file: None,
         }
     }
 
@@ -131,6 +134,13 @@ impl Controller {
         ];
     }
 
+    pub fn enable_logging(&mut self) {
+        self.log_file = Some(File::create("debug.log").unwrap());
+    }
+
+    pub fn disable_logging(&mut self) {
+        self.log_file = None;
+    }
 
     pub fn render(&self) {
         clear();
@@ -207,7 +217,15 @@ impl Controller {
             } else if self.key_chord == vec![ 'c' as i32 ] {
                 self.open_panel = OpenPanel::COMMITING;
             } else if self.key_chord == vec![ 'p' as i32 ] {
-                self.debug_string = self.git.push();
+                self.debug_string = String::from("Push complete");
+                let result = self.git.push();
+                match self.log_file {
+                    Some(ref mut file) => {
+                        file.write(result.as_bytes());
+                    },
+                    None => {
+                    },
+                }
             } else {
                 matched = false;
             },

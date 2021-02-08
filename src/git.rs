@@ -117,10 +117,7 @@ impl Git {
             .output()
             .expect("Couldn't commit");
         let err = String::from_utf8(output.stderr).unwrap();
-        match err.as_str() {
-            "" => String::from("Push Successful!"),
-            _  => String::from("Push Failed"),
-        }
+        err
     }
 
 }
