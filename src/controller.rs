@@ -73,6 +73,8 @@ pub struct Controller {
 
     log_file: Option<File>,
 
+    push_status: String,
+
 }
 
 impl Controller {
@@ -100,6 +102,7 @@ impl Controller {
             debug_string: String::new(),
             commit_msg: String::new(),
             log_file: None,
+            push_status: String::from(""),
         }
     }
 
@@ -171,7 +174,15 @@ impl Controller {
         mvaddstr(16, 0, &format!("{:?}", self.open_panel));
         mvaddstr(18, 0, &format!("Key chord: {}", char_arr_to_str(&self.key_chord)));
         mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
-
+        
+        if self.push_status != String::from("") {
+            let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
+            let mut push_msg: Text = UiElement::new();
+            push_msg.content = self.push_status.clone();
+            push_msg.style = TextStyle::BOLD;
+            push_msg.c_pair = COLOR_PAIR_H1;
+            push_msg.render(pos);
+        }
 
         self.win.render();
     }
@@ -187,6 +198,7 @@ impl Controller {
 
     pub fn handle_key(&mut self, key: i32) {
         self.last_char = key as u8 as char;
+        self.push_status = String::from("");
 
         self.key_chord.push(key);
 
@@ -218,6 +230,7 @@ impl Controller {
                 self.open_panel = OpenPanel::COMMITING;
             } else if self.key_chord == vec![ 'p' as i32 ] {
                 self.debug_string = String::from("Push complete");
+                self.render_push_start();
                 let result = self.git.push();
                 match self.log_file {
                     Some(ref mut file) => {
@@ -226,6 +239,7 @@ impl Controller {
                     None => {
                     },
                 }
+                self.push_status = result;
             } else {
                 matched = false;
             },
@@ -468,5 +482,28 @@ impl Controller {
         self.commit_msg_layer.push(Box::new(message), Coord::new(3, 1));
         self.commit_msg_layer.push(Box::new(fl1), Coord::new(1, 4));
         self.commit_msg_layer.push(Box::new(changes_header), Coord::new(0, 3));
+    }
+
+    fn render_push_start(&self) {
+        let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
+        let mut push_msg: Text = UiElement::new();
+        push_msg.content = String::from("Pushing...");
+        push_msg.style = TextStyle::BOLD;
+        push_msg.c_pair = COLOR_PAIR_SELECTED;
+
+        push_msg.render(pos);
+        refresh();
+    }
+
+    fn render_push_success(&self) {
+        let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
+        let mut push_msg: Text = UiElement::new();
+        push_msg.content = String::from("Push successfull!");
+        push_msg.style = TextStyle::BOLD;
+        push_msg.c_pair = COLOR_PAIR_H1;
+
+        push_msg.render(pos);
+        //refresh();
+        // TODO: Fix this shit.
     }
 }
