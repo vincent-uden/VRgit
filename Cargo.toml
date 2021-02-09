@@ -1,5 +1,5 @@
 [package]
-name = "VRgit"
+name = "vrgit"
 version = "0.1.0"
 authors = ["Vincent Udén <vincentuden@gmail.com>"]
 edition = "2018"

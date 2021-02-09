@@ -4,11 +4,9 @@ mod controller;
 
 use ncurses::*;
 
-use win::*;
 use controller::Controller;
 
 use std::env;
-use std::path::PathBuf;
 
 
 fn main() {

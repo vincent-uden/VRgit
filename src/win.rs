@@ -15,8 +15,8 @@ bitflags! {
     }
 }
 
-static COLOR_BG: i16 = 256;
-static COLOR_FG: i16 = 257;
+// static COLOR_BG: i16 = 256;
+// static COLOR_FG: i16 = 257;
 
 pub static COLOR_PAIR_DEFAULT: i16 = 1;
 pub static COLOR_PAIR_H1: i16 = 2;
@@ -34,7 +34,6 @@ pub struct Coord {
 }
 
 pub struct Window {
-    title: String,
     win: WINDOW,
 } 
 
@@ -96,9 +95,8 @@ impl ops::Sub for Coord {
 }
 
 impl Window {
-    pub fn new(title: &str) -> Window {
+    pub fn new() -> Window {
         Window {
-            title: String::from(title),
             win: ptr::null_mut(),
         }
     }
@@ -214,8 +212,9 @@ impl ArgList {
         self.enabled.push(false);
     }
 
+    #[allow(dead_code)]
     pub fn get_enabled(&self) -> Vec<String> {
-        self.arg_long.iter().enumerate().filter(|(i,a)| self.enabled[*i]).map(|(i,a)| String::from(a)).collect()
+        self.arg_long.iter().enumerate().filter(|(i,_)| self.enabled[*i]).map(|(_,a)| String::from(a)).collect()
     }
 
     pub fn toggle(&mut self, arg: &str) {
@@ -275,6 +274,7 @@ impl Text {
         self.style.intersects(TextStyle::UNDERLINE)
     }
 
+    #[allow(dead_code)]
     fn len(&self) -> usize {
         self.content.len()
     }
@@ -348,10 +348,6 @@ impl Layer {
     pub fn push(&mut self, item: Box<dyn UiElement>, c: Coord) {
         self.elements.push(item);
         self.positions.push(c);
-    }
-
-    pub fn clear(&mut self) {
-        self.elements.clear();
     }
 }
 

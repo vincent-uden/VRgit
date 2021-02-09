@@ -4,7 +4,7 @@ use ncurses::*;
 use crate::win::*;
 use crate::git::Git;
 
-use std::path::{PathBuf,Path};
+use std::path::{PathBuf};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -16,10 +16,12 @@ enum OpenPanel {
     COMMITMSG,
 }
 
+#[allow(dead_code)]
 fn ctrl(key_code: i32) -> i32 {
     key_code & 0x1f
 }
 
+#[allow(dead_code)]
 fn ctrl_c(key: char) -> i32 {
     ctrl(key as u8 as i32)
 }
@@ -86,7 +88,7 @@ impl Controller {
             bound_chords: Vec::new(),
             bound_args: Vec::new(),
             git: Git::new(path), 
-            win: Window::new("Test"), 
+            win: Window::new(), 
             status_layer: Layer::new(), 
             pre_commit_layer: Layer::new(),
             commit_msg_layer: Layer::new(),
@@ -139,10 +141,6 @@ impl Controller {
 
     pub fn enable_logging(&mut self) {
         self.log_file = Some(File::create("debug.log").unwrap());
-    }
-
-    pub fn disable_logging(&mut self) {
-        self.log_file = None;
     }
 
     pub fn render(&self) {
@@ -234,7 +232,10 @@ impl Controller {
                 let result = self.git.push();
                 match self.log_file {
                     Some(ref mut file) => {
-                        file.write(result.as_bytes());
+                        match file.write(result.as_bytes()) {
+                            Err(_) => println!("Error while writing to debug file"),
+                            _ => {},
+                        }
                     },
                     None => {
                     },
@@ -321,7 +322,6 @@ impl Controller {
                     }
                 },
                 OpenPanel::COMMITMSG => {
-                    let x = 0;
                 }
             }
 
@@ -495,15 +495,4 @@ impl Controller {
         refresh();
     }
 
-    fn render_push_success(&self) {
-        let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
-        let mut push_msg: Text = UiElement::new();
-        push_msg.content = String::from("Push successfull!");
-        push_msg.style = TextStyle::BOLD;
-        push_msg.c_pair = COLOR_PAIR_H1;
-
-        push_msg.render(pos);
-        //refresh();
-        // TODO: Fix this shit.
-    }
 }

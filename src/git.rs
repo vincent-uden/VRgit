@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 use std::process::Command;
-use std::collections::HashSet;
 
 pub struct Git {
     work_dir: PathBuf,
@@ -9,10 +8,6 @@ pub struct Git {
 impl Git {
     pub fn new(path: PathBuf) -> Git {
         Git { work_dir: path }
-    }
-
-    pub fn w_dir(&self) -> String {
-        format!("-C {}", self.work_dir.to_str().unwrap())
     }
 
     pub fn untracked(&self) -> Vec<PathBuf> {
