@@ -1,13 +1,12 @@
-mod win;
-mod git;
 mod controller;
+mod git;
+mod win;
 
 use ncurses::*;
 
 use controller::Controller;
 
 use std::env;
-
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -21,10 +20,8 @@ fn main() {
 
     controller.render();
     while controller.running() {
-
         controller.handle_key(getch());
         controller.render();
-
     }
 
     controller.close();

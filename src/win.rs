@@ -1,10 +1,10 @@
-use ncurses::*;
 use bitflags::bitflags;
 use itertools::izip;
+use ncurses::*;
 
-use std::ptr;
-use std::path::PathBuf;
 use std::ops;
+use std::path::PathBuf;
+use std::ptr;
 
 bitflags! {
     pub struct TextStyle: u8 {
@@ -35,20 +35,25 @@ pub struct Coord {
 
 pub struct Window {
     win: WINDOW,
-} 
+}
 
 pub struct ArgList {
-    args:      Vec<String>,
+    args: Vec<String>,
     arg_descs: Vec<String>,
-    arg_long:  Vec<String>,
+    arg_long: Vec<String>,
 
-    enabled:   Vec<bool>,
+    enabled: Vec<bool>,
 }
 
 pub struct FileList {
     pub files: Vec<PathBuf>,
     pub style: TextStyle,
     pub c_pair: i16,
+}
+
+pub struct KeyList {
+    keys: Vec<String>,
+    descs: Vec<String>,
 }
 
 pub struct Text {
@@ -69,28 +74,36 @@ pub struct Layer {
 }
 
 pub trait UiElement {
-    fn new() -> Self where Self: Sized;
+    fn new() -> Self
+    where
+        Self: Sized;
     fn render(&self, c: Coord);
     fn size(&self) -> Coord; // Assumes positive size, i32 is used for convenience
 }
 
 impl Coord {
-    pub fn new(x: i32, y:i32) -> Coord {
-        Coord { x: x, y: y}
+    pub fn new(x: i32, y: i32) -> Coord {
+        Coord { x: x, y: y }
     }
 }
 
 impl ops::Add for Coord {
     type Output = Coord;
     fn add(self, other: Coord) -> Coord {
-        Coord { x: self.x + other.x, y: self.y + other.y }
+        Coord {
+            x: self.x + other.x,
+            y: self.y + other.y,
+        }
     }
 }
 
 impl ops::Sub for Coord {
     type Output = Coord;
     fn sub(self, other: Coord) -> Coord {
-        Coord { x: self.x - other.x, y: self.y - other.y }
+        Coord {
+            x: self.x - other.x,
+            y: self.y - other.y,
+        }
     }
 }
 
@@ -159,7 +172,11 @@ impl FileList {
 
 impl UiElement for FileList {
     fn new() -> FileList {
-        FileList { files: vec!() , style: TextStyle::NORMAL, c_pair: COLOR_PAIR_DEFAULT }
+        FileList {
+            files: vec![],
+            style: TextStyle::NORMAL,
+            c_pair: COLOR_PAIR_DEFAULT,
+        }
     }
 
     fn render(&self, c: Coord) {
@@ -214,7 +231,12 @@ impl ArgList {
 
     #[allow(dead_code)]
     pub fn get_enabled(&self) -> Vec<String> {
-        self.arg_long.iter().enumerate().filter(|(i,_)| self.enabled[*i]).map(|(_,a)| String::from(a)).collect()
+        self.arg_long
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| self.enabled[*i])
+            .map(|(_, a)| String::from(a))
+            .collect()
     }
 
     pub fn toggle(&mut self, arg: &str) {
@@ -225,11 +247,22 @@ impl ArgList {
 
 impl UiElement for ArgList {
     fn new() -> ArgList {
-        ArgList { args: vec![], arg_descs: vec![], arg_long: vec![], enabled: vec![] }
+        ArgList {
+            args: vec![],
+            arg_descs: vec![],
+            arg_long: vec![],
+            enabled: vec![],
+        }
     }
 
     fn render(&self, c: Coord) {
-        for (i, arg, arg_d, arg_l, e) in izip!(0..self.args.len(), &self.args, &self.arg_descs, &self.arg_long, &self.enabled) {
+        for (i, arg, arg_d, arg_l, e) in izip!(
+            0..self.args.len(),
+            &self.args,
+            &self.arg_descs,
+            &self.arg_long,
+            &self.enabled
+        ) {
             attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
             if *e {
                 attron(A_BOLD());
@@ -240,24 +273,83 @@ impl UiElement for ArgList {
                 attroff(A_BOLD());
             }
             mvaddstr(c.y + i as i32, c.x + arg.len() as i32 + 1, arg_d);
-            attron(COLOR_PAIR(if *e { COLOR_PAIR_ENABLED } else { COLOR_PAIR_H3 }));
-            mvaddstr(c.y + i as i32, c.x + arg.len() as i32+ arg_d.len() as i32 + 3, arg_l);
-            attroff(COLOR_PAIR(if *e { COLOR_PAIR_ENABLED } else { COLOR_PAIR_H3 }));
-            mvaddstr(c.y + i as i32, c.x + arg.len() as i32+ arg_d.len() as i32 + 2, "(");
-            mvaddstr(c.y + i as i32, c.x + arg.len() as i32+ arg_d.len() as i32 + arg_l.len() as i32 + 3, ")");
+            attron(COLOR_PAIR(if *e {
+                COLOR_PAIR_ENABLED
+            } else {
+                COLOR_PAIR_H3
+            }));
+            mvaddstr(
+                c.y + i as i32,
+                c.x + arg.len() as i32 + arg_d.len() as i32 + 3,
+                arg_l,
+            );
+            attroff(COLOR_PAIR(if *e {
+                COLOR_PAIR_ENABLED
+            } else {
+                COLOR_PAIR_H3
+            }));
+            mvaddstr(
+                c.y + i as i32,
+                c.x + arg.len() as i32 + arg_d.len() as i32 + 2,
+                "(",
+            );
+            mvaddstr(
+                c.y + i as i32,
+                c.x + arg.len() as i32 + arg_d.len() as i32 + arg_l.len() as i32 + 3,
+                ")",
+            );
         }
     }
 
     fn size(&self) -> Coord {
         let mut max_width = 0;
         for i in 0..self.args.len() {
-            let width = format!("{} {} ({})", self.args[i], self.arg_descs[i], self.arg_long[i]).len();
+            let width = format!(
+                "{} {} ({})",
+                self.args[i], self.arg_descs[i], self.arg_long[i]
+            )
+            .len();
             if width > max_width {
                 max_width = width;
             }
         }
 
         Coord::new(max_width as i32, self.args.len() as i32)
+    }
+}
+
+impl KeyList {
+    pub fn push_key(&mut self, key: &str, desc: &str) {
+        self.keys.push(String::from(key));
+        self.descs.push(String::from(desc));
+    }
+}
+
+impl UiElement for KeyList {
+    fn new() -> KeyList {
+        KeyList {
+            keys: vec![],
+            descs: vec![],
+        }
+    }
+
+    fn render(&self, c: Coord) {
+        for (i, key, desc) in izip!(0..self.keys.len(), &self.keys, &self.descs) {
+            mvaddstr(c.y + i as i32, c.x, &key);
+            mvaddstr(c.y + i as i32, c.x + key.len() as i32 + 1, &desc);
+        }
+    }
+
+    fn size(&self) -> Coord {
+        let mut max_width = 0;
+        for i in 0..self.keys.len() {
+            let width = format!("{} {}", self.keys[i], self.descs[i]).len();
+            if width > max_width {
+                max_width = width;
+            }
+        }
+
+        Coord::new(max_width as i32, self.keys.len() as i32)
     }
 }
 
@@ -282,7 +374,11 @@ impl Text {
 
 impl UiElement for Text {
     fn new() -> Self {
-        Text { content: String::from(""), style: TextStyle::NORMAL, c_pair: COLOR_PAIR_DEFAULT }
+        Text {
+            content: String::from(""),
+            style: TextStyle::NORMAL,
+            c_pair: COLOR_PAIR_DEFAULT,
+        }
     }
 
     fn render(&self, c: Coord) {
@@ -320,7 +416,7 @@ impl ListHeader {
     pub fn set_title(&mut self, title: String) {
         self.title.content = title;
     }
-    
+
     pub fn set_amount(&mut self, amount: i32) {
         self.amount.content = format!("({})", amount);
     }
@@ -328,7 +424,10 @@ impl ListHeader {
 
 impl UiElement for ListHeader {
     fn new() -> Self {
-        let mut lh = ListHeader { title: Text::new(), amount: Text::new() };
+        let mut lh = ListHeader {
+            title: Text::new(),
+            amount: Text::new(),
+        };
         lh.title.c_pair = COLOR_PAIR_H3;
         lh.title.style = TextStyle::BOLD;
         lh
@@ -336,7 +435,8 @@ impl UiElement for ListHeader {
 
     fn render(&self, c: Coord) {
         self.title.render(c);
-        self.amount.render(Coord::new(c.x + self.title.size().x + 1, c.y));
+        self.amount
+            .render(Coord::new(c.x + self.title.size().x + 1, c.y));
     }
 
     fn size(&self) -> Coord {
@@ -352,8 +452,15 @@ impl Layer {
 }
 
 impl UiElement for Layer {
-    fn new() -> Self where Self: Sized {
-        Layer { elements: Vec::new(), positions: Vec::new(), visible: true }
+    fn new() -> Self
+    where
+        Self: Sized,
+    {
+        Layer {
+            elements: Vec::new(),
+            positions: Vec::new(),
+            visible: true,
+        }
     }
 
     fn render(&self, c: Coord) {

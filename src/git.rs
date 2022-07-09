@@ -19,8 +19,11 @@ impl Git {
             .arg("--exclude-standard")
             .output()
             .expect("Git failed");
-        
-        (&String::from_utf8_lossy(&child.stdout)).lines().map(|l| PathBuf::from(l)).collect()
+
+        (&String::from_utf8_lossy(&child.stdout))
+            .lines()
+            .map(|l| PathBuf::from(l))
+            .collect()
     }
 
     pub fn staged(&self) -> Vec<PathBuf> {
@@ -31,10 +34,12 @@ impl Git {
             .arg("--porcelain")
             .output()
             .expect("Couldn't run git status");
-        
-        (String::from_utf8_lossy(&child.stdout)).lines()
+
+        (String::from_utf8_lossy(&child.stdout))
+            .lines()
             .filter(|l| l.chars().nth(1).unwrap() == ' ')
-            .map(|p| PathBuf::from(&p[3..])).collect()
+            .map(|p| PathBuf::from(&p[3..]))
+            .collect()
     }
 
     pub fn unstaged(&self) -> Vec<PathBuf> {
@@ -45,10 +50,12 @@ impl Git {
             .arg("--porcelain")
             .output()
             .expect("Couldn't run git status");
-        
-        (String::from_utf8_lossy(&child.stdout)).lines()
+
+        (String::from_utf8_lossy(&child.stdout))
+            .lines()
             .filter(|l| l.chars().nth(0).unwrap() == ' ')
-            .map(|p| PathBuf::from(&p[3..])).collect()
+            .map(|p| PathBuf::from(&p[3..]))
+            .collect()
     }
 
     pub fn last_commit_msg(&self) -> String {
@@ -99,7 +106,19 @@ impl Git {
 
     pub fn commit(&self, args: Vec<String>, msg: String) {
         Command::new("git")
-            .args([vec![String::from("-C"), self.work_dir.to_str().unwrap().to_string(), String::from("commit"), String::from("-m"), msg], args.clone()].concat())
+            .args(
+                [
+                    vec![
+                        String::from("-C"),
+                        self.work_dir.to_str().unwrap().to_string(),
+                        String::from("commit"),
+                        String::from("-m"),
+                        msg,
+                    ],
+                    args.clone(),
+                ]
+                .concat(),
+            )
             .output()
             .expect("Couldn't commit");
     }
@@ -114,5 +133,4 @@ impl Git {
         let err = String::from_utf8(output.stderr).unwrap();
         err
     }
-
 }
