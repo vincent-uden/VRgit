@@ -546,19 +546,16 @@ impl Controller {
 
         separator.content = String::from("=".repeat(self.win.get_size().x as usize));
         separator.c_pair = COLOR_PAIR_SEP;
-        header.content = String::from("Key Bindings");
+        header.content = String::from("Comitting");
         header.c_pair = COLOR_PAIR_H3;
 
-        let mut i = 0;
         for chord in &self.bound_chords {
-            self.debug_string = i.to_string();
-            i += 1;
-            list.push_key(&char_arr_to_str(chord), "This is a description");
+            list.push_key(&char_arr_to_str(chord), "cursor_move");
         }
 
         self.help_layer.push(Box::new(separator), Coord::new(0, 0));
         self.help_layer.push(Box::new(header), Coord::new(0, 2));
-        self.help_layer.push(Box::new(list), Coord::new(0, 4));
+        self.help_layer.push(Box::new(list), Coord::new(1, 3));
     }
 
     fn render_push_start(&self) {

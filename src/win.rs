@@ -335,7 +335,9 @@ impl UiElement for KeyList {
 
     fn render(&self, c: Coord) {
         for (i, key, desc) in izip!(0..self.keys.len(), &self.keys, &self.descs) {
+            attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
             mvaddstr(c.y + i as i32, c.x, &key);
+            attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
             mvaddstr(c.y + i as i32, c.x + key.len() as i32 + 1, &desc);
         }
     }
