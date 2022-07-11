@@ -5,14 +5,26 @@ use std::iter::zip;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Action {
-    CursorUp,
-    CursorDown,
-    CursorBufferStart,
     CursorBufferEnd,
+    CursorBufferStart,
+    CursorDown,
+    CursorUp,
     Error,
+    Exit,
     Matching,
     NoMatch,
-    Exit,
+    OpenCommitMode,
+    OpenCommitMsgMode,
+    OpenHelpMode,
+    Push,
+    StageAllFiles,
+    StageFile,
+    ToggleCommitAllowEmpty,
+    ToggleCommitDisableHooks,
+    ToggleCommitResetAuthor,
+    ToggleCommitStageAll,
+    ToggleCommitVerbose,
+    UnstageFile,
 }
 
 pub trait Mode {

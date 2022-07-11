@@ -3,6 +3,7 @@ use ncurses::*;
 use crate::git::Git;
 use crate::util::*;
 use crate::win::*;
+use crate::mode::*;
 
 use std::collections::HashSet;
 use std::fs::File;
@@ -31,9 +32,8 @@ pub struct Controller {
     running: bool,
     last_char: char,
 
-    key_chord: Vec<i32>,
-    bound_chords: Vec<Vec<i32>>,
-    bound_args: Vec<Vec<i32>>,
+    stage_mode: StageMode,
+    commit_mode: StageMode,
 
     git: Git,
     win: Window,
@@ -69,9 +69,8 @@ impl Controller {
         Controller {
             running: true,
             last_char: ' ',
-            key_chord: Vec::new(),
-            bound_chords: Vec::new(),
-            bound_args: Vec::new(),
+            stage_mode: Mode::new(),
+            commit_mode: Mode::new(),
             git: Git::new(path),
             win: Window::new(),
             status_layer: Layer::new(),
@@ -105,26 +104,28 @@ impl Controller {
         self.cursor.x = 2;
         self.cursor.y = 2;
 
-        self.bound_chords = vec![
-            str_to_char_arr("j"),
-            str_to_char_arr("k"),
-            str_to_char_arr("q"),
-            str_to_char_arr("s"),
-            str_to_char_arr("u"),
-            str_to_char_arr("c"),
-            str_to_char_arr("p"),
-            vec![27],
-        ];
+        self.stage_mode.set_key_map(vec![
+            ("j", Action::CursorDown),
+            ("k", Action::CursorUp),
+            ("q", Action::Exit),
+            ("s", Action::StageFile),
+            ("S", Action::StageAllFiles),
+            ("u", Action::UnstageFile),
+            ("c", Action::OpenCommitMode),
+            ("?", Action::OpenHelpMode),
+            ("p", Action::Push),
+            ("<Esc>", Action::Exit),
+        ]);
 
-        self.bound_args = vec![
-            str_to_char_arr("-a"),
-            str_to_char_arr("-e"),
-            str_to_char_arr("-v"),
-            str_to_char_arr("-n"),
-            str_to_char_arr("-R"),
-            str_to_char_arr("c"),
-            vec![27],
-        ];
+        self.commit_mode.set_key_map(vec![
+            ("-a", Action::ToggleCommitStageAll),
+            ("-e", Action::ToggleCommitAllowEmpty),
+            ("-v", Action::ToggleCommitVerbose),
+            ("-n", Action::ToggleCommitDisableHooks),
+            ("-R", Action::ToggleCommitResetAuthor),
+            ("c", Action::OpenCommitMsgMode),
+            ("<Esc>", Action::Exit),
+        ]);
     }
 
     pub fn enable_logging(&mut self) {
@@ -169,13 +170,7 @@ impl Controller {
             );
         }
         mvaddch(15, 0, self.last_char as u32);
-        mvaddstr(20, 0, &format!("{:?}", char_arr_to_str(&self.key_chord)));
         mvaddstr(16, 0, &format!("{:?}", self.open_panel));
-        mvaddstr(
-            18,
-            0,
-            &format!("Key chord: {}", char_arr_to_str(&self.key_chord)),
-        );
         mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
 
         if self.push_status != String::from("") {
@@ -203,84 +198,85 @@ impl Controller {
         self.last_char = key as u8 as char;
         self.push_status = String::from("");
 
-        self.key_chord.push(key);
-
         let mut matched = true;
 
         self.debug_string.clear();
 
         match self.open_panel {
             OpenPanel::STAGING => {
-                if self.key_chord == vec!['j' as i32] {
-                    self.cursor_move(1);
-                } else if self.key_chord == vec!['k' as i32] {
-                    self.cursor_move(-1);
-                } else if self.key_chord == vec!['q' as i32] {
-                    self.close();
-                } else if self.key_chord == vec!['s' as i32] {
-                    let file = self.get_file();
-                    match file {
-                        Some(p) => self.git.stage_file(p),
-                        None => (),
-                    }
-                } else if self.key_chord == vec!['u' as i32] {
-                    let file = self.get_file();
-                    match file {
-                        Some(p) => self.git.unstage_file(p),
-                        None => (),
-                    }
-                } else if self.key_chord == vec!['c' as i32] {
-                    self.open_panel = OpenPanel::COMMITING;
-                } else if self.key_chord == vec!['p' as i32] {
-                    self.debug_string = String::from("Push complete");
-                    self.render_push_start();
-                    let result = self.git.push();
-                    match self.log_file {
-                        Some(ref mut file) => match file.write(result.as_bytes()) {
-                            Err(_) => println!("Error while writing to debug file"),
-                            _ => {}
-                        },
-                        None => {}
-                    }
-                    self.push_status = result;
-                } else if self.key_chord == vec!['?' as i32] {
-                    self.open_panel = OpenPanel::HELP;
-                } else if self.key_chord == vec![27] {
-                    self.close();
-                } else {
-                    matched = false;
+                match self.stage_mode.handle_key(key) {
+                    Action::CursorDown => self.cursor_move(1),
+                    Action::CursorUp => self.cursor_move(-1),
+                    Action::Exit => self.close(),
+                    Action::StageFile => {
+                        let file = self.get_file();
+                        match file {
+                            Some(p) => self.git.stage_file(p),
+                            None => (),
+                        }
+                    },
+                    Action::UnstageFile => {
+                        let file = self.get_file();
+                        match file {
+                            Some(p) => self.git.unstage_file(p),
+                            None => (),
+                        }
+                    },
+                    Action::OpenCommitMode => self.open_panel = OpenPanel::COMMITING,
+                    Action::Push =>  {
+                        self.debug_string = String::from("Push complete");
+                        self.render_push_start();
+                        let result = self.git.push();
+                        match self.log_file {
+                            Some(ref mut file) => match file.write(result.as_bytes()) {
+                                Err(_) => println!("Error while writing to debug file"),
+                                _ => {}
+                            },
+                            None => {}
+                        }
+                        self.push_status = result;
+                    },
+                    Action::OpenHelpMode => self.open_panel = OpenPanel::HELP,
+                    a => self.debug_string = format!("Unbound action {:?}", a),
                 }
             }
             OpenPanel::COMMITING => {
-                if self.key_chord == str_to_char_arr("-a") {
-                    if !self.enabled_commit_args.insert("-a".to_string()) {
-                        self.enabled_commit_args.remove("-a");
-                    }
-                } else if self.key_chord == str_to_char_arr("-e") {
-                    if !self.enabled_commit_args.insert("-e".to_string()) {
-                        self.enabled_commit_args.remove("-e");
-                    }
-                } else if self.key_chord == str_to_char_arr("-v") {
-                    if !self.enabled_commit_args.insert("-v".to_string()) {
-                        self.enabled_commit_args.remove("-v");
-                    }
-                } else if self.key_chord == str_to_char_arr("-n") {
-                    if !self.enabled_commit_args.insert("-n".to_string()) {
-                        self.enabled_commit_args.remove("-n");
-                    }
-                } else if self.key_chord == str_to_char_arr("-R") {
-                    if !self.enabled_commit_args.insert("-R".to_string()) {
-                        self.enabled_commit_args.remove("-R");
-                    }
-                } else if self.key_chord == str_to_char_arr("c") {
-                    self.open_panel = OpenPanel::COMMITMSG;
-                    self.update_commit_msg_layer();
-                } else if self.key_chord == vec![27] {
-                    self.open_panel = OpenPanel::STAGING;
-                } else {
-                    matched = false;
+                match self.stage_mode.handle_key(key) {
+                    Action::OpenCommitMsgMode => {
+                        self.open_panel = OpenPanel::COMMITMSG;
+                        self.update_commit_msg_layer();
+                    },
+                    Action::ToggleCommitAllowEmpty => {
+                        if !self.enabled_commit_args.insert("-e".to_string()) {
+                            self.enabled_commit_args.remove("-e");
+                        }
+                    },
+                    Action::ToggleCommitDisableHooks => {
+                        if !self.enabled_commit_args.insert("-n".to_string()) {
+                            self.enabled_commit_args.remove("-n");
+                        }
+                    },
+                    Action::ToggleCommitResetAuthor => {
+                        if !self.enabled_commit_args.insert("-R".to_string()) {
+                            self.enabled_commit_args.remove("-R");
+                        }
+                    },
+                    Action::ToggleCommitStageAll => {
+                        if !self.enabled_commit_args.insert("-a".to_string()) {
+                            self.enabled_commit_args.remove("-a");
+                        }
+                    },
+                    Action::ToggleCommitVerbose => {
+                        if !self.enabled_commit_args.insert("-v".to_string()) {
+                            self.enabled_commit_args.remove("-v");
+                        }
+                    },
+                    Action::Exit => self.open_panel = OpenPanel::STAGING,
+                    a => self.debug_string = format!("Unbound action {:?}", a),
                 }
             }
+            _ => self.open_panel = OpenPanel::STAGING,
+            /*
             OpenPanel::COMMITMSG => {
                 if self.key_chord == vec![27] {
                     self.open_panel = OpenPanel::COMMITING;
@@ -306,47 +302,11 @@ impl Controller {
                     self.open_panel = OpenPanel::STAGING;
                 }
             }
+            */
         }
-
-        //self.debug_string = self.commit_msg.clone();
-        if matched {
-            self.key_chord.clear();
-            self.update_status_layer();
-            self.update_pre_commit_layer();
-            self.update_help_layer();
-
-            // self.debug_string = String::from("MATCH!");
-        } else {
-            // self.debug_string = String::from("NO MATCH!");
-            let mut starting = false;
-            let chord_len = self.key_chord.len();
-            match self.open_panel {
-                OpenPanel::STAGING => {
-                    for chord in &self.bound_chords {
-                        if chord.len() >= chord_len {
-                            if chord[0..chord_len] == self.key_chord[..] {
-                                starting = true;
-                            }
-                        }
-                    }
-                }
-                OpenPanel::COMMITING => {
-                    for chord in &self.bound_args {
-                        if chord.len() >= chord_len {
-                            if chord[0..chord_len] == self.key_chord[..] {
-                                starting = true;
-                            }
-                        }
-                    }
-                }
-                OpenPanel::COMMITMSG => {}
-                OpenPanel::HELP => {}
-            }
-
-            if !starting {
-                self.key_chord.clear();
-            }
-        }
+        self.update_status_layer();
+        self.update_pre_commit_layer();
+        self.update_help_layer();
     }
 
     fn cursor_move(&mut self, amount: i32) {
@@ -533,10 +493,6 @@ impl Controller {
         separator.c_pair = COLOR_PAIR_SEP;
         header.content = String::from("Comitting");
         header.c_pair = COLOR_PAIR_H3;
-
-        for chord in &self.bound_chords {
-            list.push_key(&char_arr_to_str(chord), "cursor_move");
-        }
 
         self.help_layer.push(Box::new(separator), Coord::new(0, 0));
         self.help_layer.push(Box::new(header), Coord::new(0, 2));
