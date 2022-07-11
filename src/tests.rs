@@ -38,9 +38,6 @@ mod tests {
 
         assert_eq!(mode.handle_key('h' as i32), Action::NoMatch);
 
-        // Something is fucky with this part of the test, TODO:TODO:  FIX
-        let chords = mode.get_bound_chords();
-        assert_eq!(27 as char, chords.last().unwrap().chars().nth(0).unwrap());
-        assert_eq!(mode.handle_key(27 as i32), Action::Exit);
+        assert_eq!(mode.handle_key(27), Action::Exit);
     }
 }

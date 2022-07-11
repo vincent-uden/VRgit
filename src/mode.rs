@@ -62,18 +62,21 @@ impl Mode for StageMode {
     fn handle_key(&mut self, key: i32) -> Action {
         // Not a key press
         if key < 0 {
+            self.chord.clear();
             return Action::Error;
         }
 
         let pressed = char::from_u32(key as u32);
         // Not all u32s are valid keys
         if pressed.is_none() {
+            self.chord.clear();
             return Action::Error;
         }
 
         self.chord.push(pressed.unwrap());
         // No matching key binding
         if self.chord.chars().count() > self.longest_chord {
+            self.chord.clear();
             return Action::NoMatch;
         }
 
@@ -93,6 +96,7 @@ impl Mode for StageMode {
         if potential_match { 
             return Action::Matching;
         } else { 
+            self.chord.clear();
             return Action::NoMatch;
         }
     }
