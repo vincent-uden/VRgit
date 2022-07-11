@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Vincent Udén <vincentuden@gmail.com>"]
 edition = "2018"
 
+[[bin]]
+name = "vrgit"
+path = "src/main.rs"
+
 [dependencies]
 ncurses="*"
 bitflags="*"

@@ -3,20 +3,33 @@ use crate::util::*;
 use std::char;
 use std::iter::zip;
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Action {
+    CursorUp,
+    CursorDown,
+    CursorBufferStart,
+    CursorBufferEnd,
+    Error,
+    Matching,
+    NoMatch,
+    Exit,
+}
+
 pub trait Mode {
     fn new() -> Self
     where
         Self: Sized;
-    fn handle_key(&mut self, key: i32) -> fn();
+    fn handle_key(&mut self, key: i32) -> Action;
 
+    fn get_bound_chords(&self) -> Vec<String>;
+    fn get_bound_actions(&self) -> Vec<Action>;
     // TODO: Think about inserting bindings during runtime one at a time. Is
     // that a reasonable thing to do?
-    fn set_key_map(&mut self, bindings: Vec<(&str, fn())>);
+    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>);
+
 }
 
-fn blank() {}
-
-fn config_str_to_term_str(ch: &str) -> String {
+pub fn config_str_to_term_str(ch: &str) -> String {
     // TODO: Complete with conversion for Ctrl
     let mut chord = String::from(ch);
     chord = chord.replace("<Esc>", &format!("{}", 27 as char));
@@ -25,44 +38,43 @@ fn config_str_to_term_str(ch: &str) -> String {
     return chord;
 }
 
-pub struct CommitMode {
+
+pub struct StageMode {
     keys: Vec<String>,
-    bound_fns: Vec<fn()>,
+    bound_fns: Vec<Action>,
     chord: String,
     longest_chord: usize,
-    error_func: fn(),
 }
 
-impl Mode for CommitMode {
+impl Mode for StageMode {
     fn new() -> Self
     where
         Self: Sized,
     {
-        CommitMode {
+        StageMode {
             keys: Vec::new(),
             bound_fns: Vec::new(),
             chord: String::new(),
             longest_chord: 0,
-            error_func: blank,
         }
     }
 
-    fn handle_key(&mut self, key: i32) -> fn() {
+    fn handle_key(&mut self, key: i32) -> Action {
         // Not a key press
         if key < 0 {
-            return self.error_func;
+            return Action::Error;
         }
 
         let pressed = char::from_u32(key as u32);
         // Not all u32s are valid keys
         if pressed.is_none() {
-            return self.error_func;
+            return Action::Error;
         }
 
         self.chord.push(pressed.unwrap());
         // No matching key binding
         if self.chord.chars().count() > self.longest_chord {
-            return self.error_func;
+            return Action::NoMatch;
         }
 
         let mut potential_match = false;
@@ -79,16 +91,28 @@ impl Mode for CommitMode {
         // Return self.error_func means that there is no point in trying to
         // investigate the current chord any further
         if potential_match { 
-            return blank;
+            return Action::Matching;
         } else { 
-            return self.error_func;
+            return Action::NoMatch;
         }
     }
 
-    fn set_key_map(&mut self, bindings: Vec<(&str, fn())>) {
-        for (ch, fun) in &bindings {
+    fn get_bound_chords(&self) -> Vec<String> {
+        return self.keys.clone();
+    }
+
+    fn get_bound_actions(&self) -> Vec<Action> {
+        return self.bound_fns.clone();
+    }
+
+    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>) {
+        self.longest_chord = 0;
+        for (ch, fun) in bindings {
+            if ch.chars().count() > self.longest_chord {
+                self.longest_chord = ch.chars().count();
+            }
             self.keys.push(config_str_to_term_str(ch));
-            self.bound_fns.push(*fun);
+            self.bound_fns.push(fun);
         }
     }
 }

@@ -3,6 +3,7 @@ mod git;
 mod mode;
 mod util;
 mod win;
+mod tests;
 
 use ncurses::*;
 
