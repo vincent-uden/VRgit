@@ -34,6 +34,7 @@ pub struct Controller {
 
     stage_mode: StageMode,
     commit_mode: StageMode,
+    commit_msg_mode: CommitMsgMode,
 
     git: Git,
     win: Window,
@@ -71,6 +72,7 @@ impl Controller {
             last_char: ' ',
             stage_mode: Mode::new(),
             commit_mode: Mode::new(),
+            commit_msg_mode: Mode::new(),
             git: Git::new(path),
             win: Window::new(),
             status_layer: Layer::new(),
@@ -241,7 +243,7 @@ impl Controller {
                 }
             }
             OpenPanel::COMMITING => {
-                match self.stage_mode.handle_key(key) {
+                match self.commit_mode.handle_key(key) {
                     Action::OpenCommitMsgMode => {
                         self.open_panel = OpenPanel::COMMITMSG;
                         self.update_commit_msg_layer();
@@ -275,28 +277,23 @@ impl Controller {
                     a => self.debug_string = format!("Unbound action {:?}", a),
                 }
             }
-            _ => self.open_panel = OpenPanel::STAGING,
-            /*
             OpenPanel::COMMITMSG => {
-                if self.key_chord == vec![27] {
-                    self.open_panel = OpenPanel::COMMITING;
-                } else if self.key_chord == vec![263] {
-                    self.commit_msg.pop();
-                    self.update_commit_msg_layer();
-                    matched = false;
-                } else if self.last_char == '\n' {
-                    self.git.commit(
-                        self.enabled_commit_args.clone().into_iter().collect(),
-                        self.commit_msg.clone(),
-                    );
-                    self.open_panel = OpenPanel::STAGING;
-                } else {
+                match self.commit_msg_mode.handle_key(key) {
+                    Action::Exit => self.open_panel = OpenPanel::COMMITING,
+                    Action::ConfirmCommitMsg => { 
+                        self.git.commit(
+                            self.enabled_commit_args.clone().into_iter().collect(),
+                            self.commit_msg_mode.commit_msg.clone(),
+                        );
+                        self.open_panel = OpenPanel::STAGING;
+                    },
                     // TODO: Handle åäö, they fuck everything up
-                    self.commit_msg.push(self.last_char);
-                    self.update_commit_msg_layer();
-                    matched = false;
+                    Action::WriteChar => self.update_commit_msg_layer(),
+                    _ => {},
                 }
             }
+            _ => self.open_panel = OpenPanel::STAGING,
+            /*
             OpenPanel::HELP => {
                 if self.key_chord == vec![27] {
                     self.open_panel = OpenPanel::STAGING;
@@ -463,7 +460,7 @@ impl Controller {
 
         header.content = String::from("Please enter the commit message for your changes.\n >  ");
         header.c_pair = COLOR_PAIR_H3;
-        message.content = self.commit_msg.clone();
+        message.content = self.commit_msg_mode.commit_msg.clone();
         message.c_pair = COLOR_PAIR_H1;
         if self.enabled_commit_args.contains("-a") {
             fl1.files = [self.git.staged(), self.git.unstaged()].concat();

@@ -5,6 +5,7 @@ use std::iter::zip;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Action {
+    ConfirmCommitMsg,
     CursorBufferEnd,
     CursorBufferStart,
     CursorDown,
@@ -25,6 +26,7 @@ pub enum Action {
     ToggleCommitStageAll,
     ToggleCommitVerbose,
     UnstageFile,
+    WriteChar,
 }
 
 pub trait Mode {
@@ -130,5 +132,64 @@ impl Mode for StageMode {
             self.keys.push(config_str_to_term_str(ch));
             self.bound_fns.push(fun);
         }
+    }
+}
+
+pub struct CommitMsgMode {
+    exit_key: char,
+    confirm_key: char,
+    backspace_key: char,
+    pub commit_msg: String,
+}
+
+impl Mode for CommitMsgMode {
+    fn new() -> Self
+    where
+        Self: Sized
+    {
+        CommitMsgMode {
+            exit_key: 27 as char,
+            confirm_key: '\n',
+            backspace_key: '\u{107}',
+            commit_msg: String::new(),
+        }
+    }
+
+    fn handle_key(&mut self, key: i32) -> Action {
+        // Not a key press
+        if key < 0 {
+            return Action::Error;
+        }
+
+        let pressed = char::from_u32(key as u32);
+        // Not all u32s are valid keys
+        if pressed.is_none() {
+            return Action::Error;
+        }
+
+        let c = pressed.unwrap();
+        if c == self.exit_key {
+            return Action::Exit;
+        } else if c == self.confirm_key {
+            return Action::ConfirmCommitMsg;
+        } else if c == self.backspace_key {
+            self.commit_msg.pop();
+            return Action::WriteChar;
+        } else {
+            self.commit_msg.push(c);
+            return Action::WriteChar;
+        }
+    }
+
+    fn get_bound_chords(&self) -> Vec<String> {
+        return vec![String::from(self.exit_key), String::from(self.confirm_key)];
+    }
+
+    fn get_bound_actions(&self) -> Vec<Action> {
+        return vec![Action::Exit, Action::ConfirmCommitMsg];
+    }
+
+    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>) {
+        // TODO: Consider adding behaviour here
     }
 }
