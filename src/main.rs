@@ -1,5 +1,9 @@
+mod config;
 mod controller;
 mod git;
+mod mode;
+mod tests;
+mod util;
 mod win;
 
 use ncurses::*;
