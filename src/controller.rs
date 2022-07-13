@@ -1,9 +1,10 @@
 use ncurses::*;
 
+use crate::config::*;
 use crate::git::Git;
+use crate::mode::*;
 use crate::util::*;
 use crate::win::*;
-use crate::mode::*;
 
 use std::collections::HashSet;
 use std::fs::File;
@@ -63,6 +64,8 @@ pub struct Controller {
     log_file: Option<File>,
 
     push_status: String,
+
+    config: Config,
 }
 
 impl Controller {
@@ -92,6 +95,7 @@ impl Controller {
             commit_msg: String::new(),
             log_file: None,
             push_status: String::from(""),
+            config: Config::new(),
         }
     }
 
@@ -106,28 +110,11 @@ impl Controller {
         self.cursor.x = 2;
         self.cursor.y = 2;
 
-        self.stage_mode.set_key_map(vec![
-            ("j", Action::CursorDown),
-            ("k", Action::CursorUp),
-            ("q", Action::Exit),
-            ("s", Action::StageFile),
-            ("S", Action::StageAllFiles),
-            ("u", Action::UnstageFile),
-            ("c", Action::OpenCommitMode),
-            ("?", Action::OpenHelpMode),
-            ("p", Action::Push),
-            ("<Esc>", Action::Exit),
-        ]);
+        self.stage_mode
+            .set_key_map(self.config.stage_mode_key_map.clone());
 
-        self.commit_mode.set_key_map(vec![
-            ("-a", Action::ToggleCommitStageAll),
-            ("-e", Action::ToggleCommitAllowEmpty),
-            ("-v", Action::ToggleCommitVerbose),
-            ("-n", Action::ToggleCommitDisableHooks),
-            ("-R", Action::ToggleCommitResetAuthor),
-            ("c", Action::OpenCommitMsgMode),
-            ("<Esc>", Action::Exit),
-        ]);
+        self.commit_mode
+            .set_key_map(self.config.commit_mode_key_map.clone());
     }
 
     pub fn enable_logging(&mut self) {
@@ -205,91 +192,87 @@ impl Controller {
         self.debug_string.clear();
 
         match self.open_panel {
-            OpenPanel::STAGING => {
-                match self.stage_mode.handle_key(key) {
-                    Action::CursorDown => self.cursor_move(1),
-                    Action::CursorUp => self.cursor_move(-1),
-                    Action::Exit => self.close(),
-                    Action::StageFile => {
-                        let file = self.get_file();
-                        match file {
-                            Some(p) => self.git.stage_file(p),
-                            None => (),
-                        }
-                    },
-                    Action::UnstageFile => {
-                        let file = self.get_file();
-                        match file {
-                            Some(p) => self.git.unstage_file(p),
-                            None => (),
-                        }
-                    },
-                    Action::OpenCommitMode => self.open_panel = OpenPanel::COMMITING,
-                    Action::Push =>  {
-                        self.debug_string = String::from("Push complete");
-                        self.render_push_start();
-                        let result = self.git.push();
-                        match self.log_file {
-                            Some(ref mut file) => match file.write(result.as_bytes()) {
-                                Err(_) => println!("Error while writing to debug file"),
-                                _ => {}
-                            },
-                            None => {}
-                        }
-                        self.push_status = result;
-                    },
-                    Action::OpenHelpMode => self.open_panel = OpenPanel::HELP,
-                    a => self.debug_string = format!("Unbound action {:?}", a),
+            OpenPanel::STAGING => match self.stage_mode.handle_key(key) {
+                Action::CursorDown => self.cursor_move(1),
+                Action::CursorUp => self.cursor_move(-1),
+                Action::Exit => self.close(),
+                Action::StageFile => {
+                    let file = self.get_file();
+                    match file {
+                        Some(p) => self.git.stage_file(p),
+                        None => (),
+                    }
                 }
-            }
-            OpenPanel::COMMITING => {
-                match self.commit_mode.handle_key(key) {
-                    Action::OpenCommitMsgMode => {
-                        self.open_panel = OpenPanel::COMMITMSG;
-                        self.update_commit_msg_layer();
-                    },
-                    Action::ToggleCommitAllowEmpty => {
-                        if !self.enabled_commit_args.insert("-e".to_string()) {
-                            self.enabled_commit_args.remove("-e");
-                        }
-                    },
-                    Action::ToggleCommitDisableHooks => {
-                        if !self.enabled_commit_args.insert("-n".to_string()) {
-                            self.enabled_commit_args.remove("-n");
-                        }
-                    },
-                    Action::ToggleCommitResetAuthor => {
-                        if !self.enabled_commit_args.insert("-R".to_string()) {
-                            self.enabled_commit_args.remove("-R");
-                        }
-                    },
-                    Action::ToggleCommitStageAll => {
-                        if !self.enabled_commit_args.insert("-a".to_string()) {
-                            self.enabled_commit_args.remove("-a");
-                        }
-                    },
-                    Action::ToggleCommitVerbose => {
-                        if !self.enabled_commit_args.insert("-v".to_string()) {
-                            self.enabled_commit_args.remove("-v");
-                        }
-                    },
-                    Action::Exit => self.open_panel = OpenPanel::STAGING,
-                    a => self.debug_string = format!("Unbound action {:?}", a),
+                Action::UnstageFile => {
+                    let file = self.get_file();
+                    match file {
+                        Some(p) => self.git.unstage_file(p),
+                        None => (),
+                    }
                 }
-            }
+                Action::OpenCommitMode => self.open_panel = OpenPanel::COMMITING,
+                Action::Push => {
+                    self.debug_string = String::from("Push complete");
+                    self.render_push_start();
+                    let result = self.git.push();
+                    match self.log_file {
+                        Some(ref mut file) => match file.write(result.as_bytes()) {
+                            Err(_) => println!("Error while writing to debug file"),
+                            _ => {}
+                        },
+                        None => {}
+                    }
+                    self.push_status = result;
+                }
+                Action::OpenHelpMode => self.open_panel = OpenPanel::HELP,
+                a => self.debug_string = format!("Unbound action {:?}", a),
+            },
+            OpenPanel::COMMITING => match self.commit_mode.handle_key(key) {
+                Action::OpenCommitMsgMode => {
+                    self.open_panel = OpenPanel::COMMITMSG;
+                    self.update_commit_msg_layer();
+                }
+                Action::ToggleCommitAllowEmpty => {
+                    if !self.enabled_commit_args.insert("-e".to_string()) {
+                        self.enabled_commit_args.remove("-e");
+                    }
+                }
+                Action::ToggleCommitDisableHooks => {
+                    if !self.enabled_commit_args.insert("-n".to_string()) {
+                        self.enabled_commit_args.remove("-n");
+                    }
+                }
+                Action::ToggleCommitResetAuthor => {
+                    if !self.enabled_commit_args.insert("-R".to_string()) {
+                        self.enabled_commit_args.remove("-R");
+                    }
+                }
+                Action::ToggleCommitStageAll => {
+                    if !self.enabled_commit_args.insert("-a".to_string()) {
+                        self.enabled_commit_args.remove("-a");
+                    }
+                }
+                Action::ToggleCommitVerbose => {
+                    if !self.enabled_commit_args.insert("-v".to_string()) {
+                        self.enabled_commit_args.remove("-v");
+                    }
+                }
+                Action::Exit => self.open_panel = OpenPanel::STAGING,
+                a => self.debug_string = format!("Unbound action {:?}", a),
+            },
             OpenPanel::COMMITMSG => {
                 match self.commit_msg_mode.handle_key(key) {
                     Action::Exit => self.open_panel = OpenPanel::COMMITING,
-                    Action::ConfirmCommitMsg => { 
+                    Action::ConfirmCommitMsg => {
                         self.git.commit(
                             self.enabled_commit_args.clone().into_iter().collect(),
                             self.commit_msg_mode.commit_msg.clone(),
                         );
                         self.open_panel = OpenPanel::STAGING;
-                    },
+                    }
                     // TODO: Handle åäö, they fuck everything up
                     Action::WriteChar => self.update_commit_msg_layer(),
-                    _ => {},
+                    _ => {}
                 }
             }
             _ => self.open_panel = OpenPanel::STAGING,

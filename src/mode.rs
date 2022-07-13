@@ -39,8 +39,7 @@ pub trait Mode {
     fn get_bound_actions(&self) -> Vec<Action>;
     // TODO: Think about inserting bindings during runtime one at a time. Is
     // that a reasonable thing to do?
-    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>);
-
+    fn set_key_map(&mut self, bindings: Vec<(String, Action)>);
 }
 
 pub fn config_str_to_term_str(ch: &str) -> String {
@@ -51,7 +50,6 @@ pub fn config_str_to_term_str(ch: &str) -> String {
 
     return chord;
 }
-
 
 pub struct StageMode {
     keys: Vec<String>,
@@ -107,9 +105,9 @@ impl Mode for StageMode {
 
         // Return self.error_func means that there is no point in trying to
         // investigate the current chord any further
-        if potential_match { 
+        if potential_match {
             return Action::Matching;
-        } else { 
+        } else {
             self.chord.clear();
             return Action::NoMatch;
         }
@@ -123,13 +121,13 @@ impl Mode for StageMode {
         return self.bound_fns.clone();
     }
 
-    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>) {
+    fn set_key_map(&mut self, bindings: Vec<(String, Action)>) {
         self.longest_chord = 0;
         for (ch, fun) in bindings {
             if ch.chars().count() > self.longest_chord {
                 self.longest_chord = ch.chars().count();
             }
-            self.keys.push(config_str_to_term_str(ch));
+            self.keys.push(config_str_to_term_str(&ch));
             self.bound_fns.push(fun);
         }
     }
@@ -145,7 +143,7 @@ pub struct CommitMsgMode {
 impl Mode for CommitMsgMode {
     fn new() -> Self
     where
-        Self: Sized
+        Self: Sized,
     {
         CommitMsgMode {
             exit_key: 27 as char,
@@ -189,7 +187,7 @@ impl Mode for CommitMsgMode {
         return vec![Action::Exit, Action::ConfirmCommitMsg];
     }
 
-    fn set_key_map(&mut self, bindings: Vec<(&str, Action)>) {
+    fn set_key_map(&mut self, bindings: Vec<(String, Action)>) {
         // TODO: Consider adding behaviour here
     }
 }
