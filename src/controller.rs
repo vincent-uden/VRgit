@@ -3,12 +3,12 @@ use ncurses::*;
 use crate::config::*;
 use crate::git::Git;
 use crate::mode::*;
-use crate::util::*;
 use crate::win::*;
 
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
+use std::iter::zip;
 use std::path::PathBuf;
 
 #[derive(PartialEq, Debug)]
@@ -59,7 +59,6 @@ pub struct Controller {
     enabled_commit_args: HashSet<String>,
 
     debug_string: String,
-    commit_msg: String,
 
     log_file: Option<File>,
 
@@ -92,7 +91,6 @@ impl Controller {
             open_panel: OpenPanel::STAGING,
             enabled_commit_args: HashSet::new(),
             debug_string: String::new(),
-            commit_msg: String::new(),
             log_file: None,
             push_status: String::from(""),
             config: Config::new(),
@@ -137,6 +135,7 @@ impl Controller {
             self.commit_msg_layer.render(Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::HELP {
+            self.status_layer.render(Coord::new(0, 0));
             self.help_layer.render(Coord::new(
                 0,
                 self.win.get_size().y - self.help_layer.size().y - 1,
@@ -186,8 +185,6 @@ impl Controller {
     pub fn handle_key(&mut self, key: i32) {
         self.last_char = key as u8 as char;
         self.push_status = String::from("");
-
-        let mut matched = true;
 
         self.debug_string.clear();
 
@@ -471,8 +468,14 @@ impl Controller {
 
         separator.content = String::from("=".repeat(self.win.get_size().x as usize));
         separator.c_pair = COLOR_PAIR_SEP;
-        header.content = String::from("Comitting");
+        header.content = String::from("Staging");
         header.c_pair = COLOR_PAIR_H3;
+        for (chord, action) in zip(
+            self.stage_mode.get_bound_chords(),
+            self.stage_mode.get_bound_actions(),
+        ) {
+            list.push_key(&chord, &format!("{:?}", action));
+        }
 
         self.help_layer.push(Box::new(separator), Coord::new(0, 0));
         self.help_layer.push(Box::new(header), Coord::new(0, 2));

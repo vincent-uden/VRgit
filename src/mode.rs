@@ -1,5 +1,3 @@
-use crate::util::*;
-
 use std::char;
 use std::iter::zip;
 
@@ -187,7 +185,7 @@ impl Mode for CommitMsgMode {
         return vec![Action::Exit, Action::ConfirmCommitMsg];
     }
 
-    fn set_key_map(&mut self, bindings: Vec<(String, Action)>) {
+    fn set_key_map(&mut self, _bindings: Vec<(String, Action)>) {
         // TODO: Consider adding behaviour here
     }
 }
