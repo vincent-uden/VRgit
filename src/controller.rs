@@ -126,20 +126,24 @@ impl Controller {
         }
         if self.open_panel == OpenPanel::COMMITING {
             self.status_layer.render(&self.win.win, Coord::new(0, 0));
-            self.pre_commit_layer.render(&self.win.win, Coord::new(
-                0,
-                self.win.get_size().y - self.pre_commit_layer.size().y - 1,
-            ));
+            self.pre_commit_layer.render(
+                &self.win.win,
+                Coord::new(
+                    0,
+                    self.win.get_size().y - self.pre_commit_layer.size().y - 1,
+                ),
+            );
         }
         if self.open_panel == OpenPanel::COMMITMSG {
-            self.commit_msg_layer.render(&self.win.win, Coord::new(0, 0));
+            self.commit_msg_layer
+                .render(&self.win.win, Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::HELP {
             self.status_layer.render(&self.win.win, Coord::new(0, 0));
-            self.help_layer.render(&self.win.win, Coord::new(
-                0,
-                self.win.get_size().y - self.help_layer.size().y - 1,
-            ));
+            self.help_layer.render(
+                &self.win.win,
+                Coord::new(0, self.win.get_size().y - self.help_layer.size().y - 1),
+            );
         }
 
         let mut i = 0;

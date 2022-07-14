@@ -9,7 +9,7 @@ mod win;
 use pancurses::*;
 
 #[cfg(target_os = "linux")]
-use ncurses::{set_escdelay};
+use ncurses::set_escdelay;
 
 use controller::Controller;
 

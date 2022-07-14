@@ -1,6 +1,10 @@
 use bitflags::bitflags;
 use itertools::izip;
-use pancurses::{self, noecho, curs_set, cbreak, raw, use_default_colors, start_color, init_pair, endwin, COLOR_GREEN, COLOR_RED, COLOR_BLUE, COLOR_MAGENTA, COLOR_BLACK, COLOR_WHITE, COLOR_YELLOW, Attribute, COLOR_PAIR};
+use pancurses::{
+    self, cbreak, curs_set, endwin, init_pair, noecho, raw, start_color, use_default_colors,
+    Attribute, COLOR_BLACK, COLOR_BLUE, COLOR_GREEN, COLOR_MAGENTA, COLOR_PAIR, COLOR_RED,
+    COLOR_WHITE, COLOR_YELLOW,
+};
 
 use std::ops;
 use std::path::PathBuf;
@@ -77,7 +81,7 @@ pub trait UiElement {
     fn new() -> Self
     where
         Self: Sized;
-    fn render(&self, win: &pancurses::Window,c: Coord);
+    fn render(&self, win: &pancurses::Window, c: Coord);
     fn size(&self) -> Coord; // Assumes positive size, i32 is used for convenience
 }
 
