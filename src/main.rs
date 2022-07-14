@@ -33,6 +33,7 @@ fn main() {
     while controller.running() {
         controller.handle_key(match controller.win.win.getch() {
             Some(Input::Character(c)) => c as i32,
+            Some(Input::KeyBackspace) => '\u{107}' as i32,
             _ => 0,
         });
         controller.render();
