@@ -38,7 +38,7 @@ pub struct Controller {
     commit_msg_mode: CommitMsgMode,
 
     git: Git,
-    win: Window,
+    pub win: Window,
 
     status_layer: Layer,
     pre_commit_layer: Layer,
@@ -122,21 +122,21 @@ impl Controller {
     pub fn render(&self) {
         clear();
         if self.open_panel == OpenPanel::STAGING {
-            self.status_layer.render(Coord::new(0, 0));
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::COMMITING {
-            self.status_layer.render(Coord::new(0, 0));
-            self.pre_commit_layer.render(Coord::new(
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
+            self.pre_commit_layer.render(&self.win.win, Coord::new(
                 0,
                 self.win.get_size().y - self.pre_commit_layer.size().y - 1,
             ));
         }
         if self.open_panel == OpenPanel::COMMITMSG {
-            self.commit_msg_layer.render(Coord::new(0, 0));
+            self.commit_msg_layer.render(&self.win.win, Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::HELP {
-            self.status_layer.render(Coord::new(0, 0));
-            self.help_layer.render(Coord::new(
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
+            self.help_layer.render(&self.win.win, Coord::new(
                 0,
                 self.win.get_size().y - self.help_layer.size().y - 1,
             ));
@@ -154,7 +154,7 @@ impl Controller {
             mvaddch(
                 self.cursor.y,
                 self.cursor.x,
-                on_cursor & (!COLOR_PAIR(0xFF)) | COLOR_PAIR(COLOR_PAIR_SELECTED),
+                on_cursor & (!COLOR_PAIR(0xFF)) | COLOR_PAIR(COLOR_PAIR_SELECTED as i16),
             );
         }
         mvaddch(15, 0, self.last_char as u32);
@@ -167,7 +167,7 @@ impl Controller {
             push_msg.content = self.push_status.clone();
             push_msg.style = TextStyle::BOLD;
             push_msg.c_pair = COLOR_PAIR_H1;
-            push_msg.render(pos);
+            push_msg.render(&self.win.win, pos);
         }
 
         self.win.render();
@@ -489,7 +489,7 @@ impl Controller {
         push_msg.style = TextStyle::BOLD;
         push_msg.c_pair = COLOR_PAIR_SELECTED;
 
-        push_msg.render(pos);
+        push_msg.render(&self.win.win, pos);
         refresh();
     }
 }

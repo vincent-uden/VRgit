@@ -9,6 +9,9 @@ name = "vrgit"
 path = "src/main.rs"
 
 [dependencies]
+[target.'cfg(target_os = "linux")'.dependencies]
 ncurses="*"
+
 bitflags="*"
 itertools="*"
+pancurses="*"

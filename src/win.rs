@@ -1,6 +1,6 @@
 use bitflags::bitflags;
 use itertools::izip;
-use ncurses::*;
+use pancurses::{self, noecho, curs_set, cbreak, raw, use_default_colors, start_color, init_pair, endwin, COLOR_GREEN, COLOR_RED, COLOR_BLUE, COLOR_MAGENTA, COLOR_BLACK, COLOR_WHITE, COLOR_YELLOW, Attribute, COLOR_PAIR};
 
 use std::ops;
 use std::path::PathBuf;
@@ -18,14 +18,14 @@ bitflags! {
 // static COLOR_BG: i16 = 256;
 // static COLOR_FG: i16 = 257;
 
-pub static COLOR_PAIR_DEFAULT: i16 = 1;
-pub static COLOR_PAIR_H1: i16 = 2;
-pub static COLOR_PAIR_H2: i16 = 3;
-pub static COLOR_PAIR_H3: i16 = 4;
-pub static COLOR_PAIR_SELECTED: i16 = 5;
-pub static COLOR_PAIR_UNTRACKED: i16 = 6;
-pub static COLOR_PAIR_SEP: i16 = 7;
-pub static COLOR_PAIR_ENABLED: i16 = 8;
+pub static COLOR_PAIR_DEFAULT: u32 = 1;
+pub static COLOR_PAIR_H1: u32 = 2;
+pub static COLOR_PAIR_H2: u32 = 3;
+pub static COLOR_PAIR_H3: u32 = 4;
+pub static COLOR_PAIR_SELECTED: u32 = 5;
+pub static COLOR_PAIR_UNTRACKED: u32 = 6;
+pub static COLOR_PAIR_SEP: u32 = 7;
+pub static COLOR_PAIR_ENABLED: u32 = 8;
 
 #[derive(Copy, Clone)]
 pub struct Coord {
@@ -34,7 +34,7 @@ pub struct Coord {
 }
 
 pub struct Window {
-    win: WINDOW,
+    pub win: pancurses::Window,
 }
 
 pub struct ArgList {
@@ -48,7 +48,7 @@ pub struct ArgList {
 pub struct FileList {
     pub files: Vec<PathBuf>,
     pub style: TextStyle,
-    pub c_pair: i16,
+    pub c_pair: u32,
 }
 
 pub struct KeyList {
@@ -59,7 +59,7 @@ pub struct KeyList {
 pub struct Text {
     pub content: String,
     pub style: TextStyle,
-    pub c_pair: i16,
+    pub c_pair: u32,
 }
 
 pub struct ListHeader {
@@ -77,7 +77,7 @@ pub trait UiElement {
     fn new() -> Self
     where
         Self: Sized;
-    fn render(&self, c: Coord);
+    fn render(&self, win: &pancurses::Window,c: Coord);
     fn size(&self) -> Coord; // Assumes positive size, i32 is used for convenience
 }
 
@@ -110,34 +110,31 @@ impl ops::Sub for Coord {
 impl Window {
     pub fn new() -> Window {
         Window {
-            win: ptr::null_mut(),
+            win: pancurses::initscr(),
         }
     }
 
     pub fn init(&mut self) {
-        self.win = initscr();
-        keypad(self.win, true);
+        self.win.keypad(true);
         noecho();
-        curs_set(CURSOR_VISIBILITY::CURSOR_INVISIBLE);
+        curs_set(0);
         cbreak();
         raw();
-        set_escdelay(1);
-        setlocale(LcCategory::all, "");
 
         use_default_colors();
         start_color();
-        init_pair(COLOR_PAIR_DEFAULT, -1, -1);
-        init_pair(COLOR_PAIR_H1, COLOR_GREEN, -1);
-        init_pair(COLOR_PAIR_H2, COLOR_RED, -1);
-        init_pair(COLOR_PAIR_H3, COLOR_BLUE, -1);
-        init_pair(COLOR_PAIR_SELECTED, COLOR_BLACK, COLOR_WHITE);
-        init_pair(COLOR_PAIR_UNTRACKED, COLOR_MAGENTA, -1);
-        init_pair(COLOR_PAIR_SEP, COLOR_BLACK, COLOR_BLUE);
-        init_pair(COLOR_PAIR_ENABLED, COLOR_YELLOW, -1);
+        init_pair(COLOR_PAIR_DEFAULT as i16, -1, -1);
+        init_pair(COLOR_PAIR_H1 as i16, COLOR_GREEN, -1);
+        init_pair(COLOR_PAIR_H2 as i16, COLOR_RED, -1);
+        init_pair(COLOR_PAIR_H3 as i16, COLOR_BLUE, -1);
+        init_pair(COLOR_PAIR_SELECTED as i16, COLOR_BLACK, COLOR_WHITE);
+        init_pair(COLOR_PAIR_UNTRACKED as i16, COLOR_MAGENTA, -1);
+        init_pair(COLOR_PAIR_SEP as i16, COLOR_BLACK, COLOR_BLUE);
+        init_pair(COLOR_PAIR_ENABLED as i16, COLOR_YELLOW, -1);
     }
 
     pub fn render(&self) {
-        refresh();
+        self.win.refresh();
     }
 
     pub fn close(&self) {
@@ -145,9 +142,7 @@ impl Window {
     }
 
     pub fn get_size(&self) -> Coord {
-        let mut max_x = 0;
-        let mut max_y = 0;
-        getmaxyx(self.win, &mut max_y, &mut max_x);
+        let (max_y, max_x) = self.win.get_max_yx();
         Coord::new(max_x, max_y)
     }
 }
@@ -179,32 +174,32 @@ impl UiElement for FileList {
         }
     }
 
-    fn render(&self, c: Coord) {
+    fn render(&self, win: &pancurses::Window, c: Coord) {
         if self.bold() {
-            attron(A_BOLD());
+            win.attron(Attribute::Bold);
         }
         if self.italic() {
-            attron(A_ITALIC());
+            win.attron(Attribute::Italic);
         }
         if self.underlined() {
-            attron(A_UNDERLINE());
+            win.attron(Attribute::Underline);
         }
-        attron(COLOR_PAIR(self.c_pair));
+        win.attron(COLOR_PAIR(self.c_pair as u32));
         let mut i = 0;
         for path in &self.files {
-            mvaddstr(c.y + i, c.x, &format!("{}\n", path.to_str().unwrap()));
+            win.mvaddstr(c.y + i, c.x, &format!("{}\n", path.to_str().unwrap()));
             i += 1;
         }
         if self.bold() {
-            attroff(A_BOLD());
+            win.attroff(Attribute::Bold);
         }
         if self.italic() {
-            attroff(A_ITALIC());
+            win.attroff(Attribute::Italic);
         }
         if self.underlined() {
-            attroff(A_UNDERLINE());
+            win.attroff(Attribute::Underline);
         }
-        attroff(COLOR_PAIR(self.c_pair));
+        win.attroff(COLOR_PAIR(self.c_pair as u32));
     }
 
     fn size(&self) -> Coord {
@@ -255,7 +250,7 @@ impl UiElement for ArgList {
         }
     }
 
-    fn render(&self, c: Coord) {
+    fn render(&self, win: &pancurses::Window, c: Coord) {
         for (i, arg, arg_d, arg_l, e) in izip!(
             0..self.args.len(),
             &self.args,
@@ -263,37 +258,37 @@ impl UiElement for ArgList {
             &self.arg_long,
             &self.enabled
         ) {
-            attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
             if *e {
-                attron(A_BOLD());
+                win.attron(Attribute::Bold);
             }
-            mvaddstr(c.y + i as i32, c.x, arg);
-            attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.mvaddstr(c.y + i as i32, c.x, arg);
+            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
             if *e {
-                attroff(A_BOLD());
+                win.attroff(Attribute::Bold);
             }
-            mvaddstr(c.y + i as i32, c.x + arg.len() as i32 + 1, arg_d);
-            attron(COLOR_PAIR(if *e {
+            win.mvaddstr(c.y + i as i32, c.x + arg.len() as i32 + 1, arg_d);
+            win.attron(COLOR_PAIR(if *e {
                 COLOR_PAIR_ENABLED
             } else {
                 COLOR_PAIR_H3
             }));
-            mvaddstr(
+            win.mvaddstr(
                 c.y + i as i32,
                 c.x + arg.len() as i32 + arg_d.len() as i32 + 3,
                 arg_l,
             );
-            attroff(COLOR_PAIR(if *e {
+            win.attroff(COLOR_PAIR(if *e {
                 COLOR_PAIR_ENABLED
             } else {
                 COLOR_PAIR_H3
             }));
-            mvaddstr(
+            win.mvaddstr(
                 c.y + i as i32,
                 c.x + arg.len() as i32 + arg_d.len() as i32 + 2,
                 "(",
             );
-            mvaddstr(
+            win.mvaddstr(
                 c.y + i as i32,
                 c.x + arg.len() as i32 + arg_d.len() as i32 + arg_l.len() as i32 + 3,
                 ")",
@@ -333,12 +328,12 @@ impl UiElement for KeyList {
         }
     }
 
-    fn render(&self, c: Coord) {
+    fn render(&self, win: &pancurses::Window, c: Coord) {
         for (i, key, desc) in izip!(0..self.keys.len(), &self.keys, &self.descs) {
-            attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
-            mvaddstr(c.y + i as i32, c.x, &key);
-            attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
-            mvaddstr(c.y + i as i32, c.x + key.len() as i32 + 1, &desc);
+            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.mvaddstr(c.y + i as i32, c.x, &key);
+            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.mvaddstr(c.y + i as i32, c.x + key.len() as i32 + 1, &desc);
         }
     }
 
@@ -383,29 +378,29 @@ impl UiElement for Text {
         }
     }
 
-    fn render(&self, c: Coord) {
-        attron(COLOR_PAIR(self.c_pair));
+    fn render(&self, win: &pancurses::Window, c: Coord) {
+        win.attron(COLOR_PAIR(self.c_pair));
         if self.bold() {
-            attron(A_BOLD());
+            win.attron(Attribute::Bold);
         }
         if self.italic() {
-            attron(A_ITALIC());
+            win.attron(Attribute::Italic);
         }
         if self.underlined() {
-            attron(A_UNDERLINE());
+            win.attron(Attribute::Underline);
         }
 
-        mvaddstr(c.y, c.x, &self.content);
+        win.mvaddstr(c.y, c.x, &self.content);
 
-        attroff(COLOR_PAIR(self.c_pair));
+        win.attroff(COLOR_PAIR(self.c_pair));
         if self.bold() {
-            attroff(A_BOLD());
+            win.attroff(Attribute::Bold);
         }
         if self.italic() {
-            attroff(A_ITALIC());
+            win.attroff(Attribute::Italic);
         }
         if self.underlined() {
-            attroff(A_UNDERLINE());
+            win.attroff(Attribute::Underline);
         }
     }
 
@@ -435,10 +430,10 @@ impl UiElement for ListHeader {
         lh
     }
 
-    fn render(&self, c: Coord) {
-        self.title.render(c);
+    fn render(&self, win: &pancurses::Window, c: Coord) {
+        self.title.render(win, c);
         self.amount
-            .render(Coord::new(c.x + self.title.size().x + 1, c.y));
+            .render(win, Coord::new(c.x + self.title.size().x + 1, c.y));
     }
 
     fn size(&self) -> Coord {
@@ -465,10 +460,10 @@ impl UiElement for Layer {
         }
     }
 
-    fn render(&self, c: Coord) {
+    fn render(&self, win: &pancurses::Window, c: Coord) {
         if self.visible {
             for (i, e) in self.elements.iter().enumerate() {
-                (*e).render(self.positions[i] + c);
+                (*e).render(win, self.positions[i] + c);
             }
         }
     }
