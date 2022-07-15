@@ -14,7 +14,7 @@ use std::iter::zip;
 use std::path::PathBuf;
 
 #[cfg(target_os = "windows")]
-pub fn set_escdelay(x: i32) { }
+pub fn set_escdelay(x: i32) {}
 
 #[derive(PartialEq, Debug)]
 enum OpenPanel {
@@ -167,8 +167,12 @@ impl Controller {
             );
         }
         self.win.win.mvaddch(15, 0, self.last_char);
-        self.win.win.mvaddstr(16, 0, &format!("{:?}", self.open_panel));
-        self.win.win.mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
+        self.win
+            .win
+            .mvaddstr(16, 0, &format!("{:?}", self.open_panel));
+        self.win
+            .win
+            .mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
 
         if self.push_status != String::from("") {
             let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
