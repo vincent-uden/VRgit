@@ -134,7 +134,7 @@ impl Mode for StageMode {
 pub struct CommitMsgMode {
     exit_key: char,
     confirm_key: char,
-    backspace_key: char,
+    backspace_keys: Vec<char>,
     pub commit_msg: String,
 }
 
@@ -146,7 +146,7 @@ impl Mode for CommitMsgMode {
         CommitMsgMode {
             exit_key: 27 as char,
             confirm_key: '\n',
-            backspace_key: '\u{107}',
+            backspace_keys: vec!['\u{107}', 8 as char],
             commit_msg: String::new(),
         }
     }
@@ -168,7 +168,7 @@ impl Mode for CommitMsgMode {
             return Action::Exit;
         } else if c == self.confirm_key {
             return Action::ConfirmCommitMsg;
-        } else if c == self.backspace_key {
+        } else if self.backspace_keys.contains(&c) {
             self.commit_msg.pop();
             return Action::WriteChar;
         } else {

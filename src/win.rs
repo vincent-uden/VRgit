@@ -188,7 +188,7 @@ impl UiElement for FileList {
         if self.underlined() {
             win.attron(Attribute::Underline);
         }
-        win.attron(COLOR_PAIR(self.c_pair as u32));
+        win.attron(COLOR_PAIR(self.c_pair.into()));
         let mut i = 0;
         for path in &self.files {
             win.mvaddstr(c.y + i, c.x, &format!("{}\n", path.to_str().unwrap()));
@@ -203,7 +203,7 @@ impl UiElement for FileList {
         if self.underlined() {
             win.attroff(Attribute::Underline);
         }
-        win.attroff(COLOR_PAIR(self.c_pair as u32));
+        win.attroff(COLOR_PAIR(self.c_pair.into()));
     }
 
     fn size(&self) -> Coord {
@@ -262,20 +262,20 @@ impl UiElement for ArgList {
             &self.arg_long,
             &self.enabled
         ) {
-            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED.into()));
             if *e {
                 win.attron(Attribute::Bold);
             }
             win.mvaddstr(c.y + i as i32, c.x, arg);
-            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED.into()));
             if *e {
                 win.attroff(Attribute::Bold);
             }
             win.mvaddstr(c.y + i as i32, c.x + arg.len() as i32 + 1, arg_d);
             win.attron(COLOR_PAIR(if *e {
-                COLOR_PAIR_ENABLED
+                COLOR_PAIR_ENABLED.into()
             } else {
-                COLOR_PAIR_H3
+                COLOR_PAIR_H3.into()
             }));
             win.mvaddstr(
                 c.y + i as i32,
@@ -283,9 +283,9 @@ impl UiElement for ArgList {
                 arg_l,
             );
             win.attroff(COLOR_PAIR(if *e {
-                COLOR_PAIR_ENABLED
+                COLOR_PAIR_ENABLED.into()
             } else {
-                COLOR_PAIR_H3
+                COLOR_PAIR_H3.into()
             }));
             win.mvaddstr(
                 c.y + i as i32,
@@ -334,9 +334,9 @@ impl UiElement for KeyList {
 
     fn render(&self, win: &pancurses::Window, c: Coord) {
         for (i, key, desc) in izip!(0..self.keys.len(), &self.keys, &self.descs) {
-            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.attron(COLOR_PAIR(COLOR_PAIR_UNTRACKED.into()));
             win.mvaddstr(c.y + i as i32, c.x, &key);
-            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED));
+            win.attroff(COLOR_PAIR(COLOR_PAIR_UNTRACKED.into()));
             win.mvaddstr(c.y + i as i32, c.x + key.len() as i32 + 1, &desc);
         }
     }
@@ -383,7 +383,7 @@ impl UiElement for Text {
     }
 
     fn render(&self, win: &pancurses::Window, c: Coord) {
-        win.attron(COLOR_PAIR(self.c_pair));
+        win.attron(COLOR_PAIR(self.c_pair.into()));
         if self.bold() {
             win.attron(Attribute::Bold);
         }
@@ -396,7 +396,7 @@ impl UiElement for Text {
 
         win.mvaddstr(c.y, c.x, &self.content);
 
-        win.attroff(COLOR_PAIR(self.c_pair));
+        win.attroff(COLOR_PAIR(self.c_pair.into()));
         if self.bold() {
             win.attroff(Attribute::Bold);
         }

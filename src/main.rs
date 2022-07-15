@@ -11,6 +11,9 @@ use pancurses::*;
 #[cfg(target_os = "linux")]
 use ncurses::set_escdelay;
 
+#[cfg(target_os = "windows")]
+use controller::set_escdelay;
+
 use controller::Controller;
 
 use std::env::{self, consts};
