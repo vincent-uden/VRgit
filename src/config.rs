@@ -30,6 +30,7 @@ impl Config {
                 ("-n", Action::ToggleCommitDisableHooks),
                 ("-R", Action::ToggleCommitResetAuthor),
                 ("c", Action::OpenCommitMsgMode),
+                ("q", Action::Exit),
                 ("<Esc>", Action::Exit),
             ]
             .iter()

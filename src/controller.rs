@@ -1,4 +1,6 @@
+#[cfg(target_os = "linux")]
 use ncurses::*;
+use pancurses::COLOR_PAIR;
 
 use crate::config::*;
 use crate::git::Git;
@@ -10,6 +12,9 @@ use std::fs::File;
 use std::io::Write;
 use std::iter::zip;
 use std::path::PathBuf;
+
+#[cfg(target_os = "windows")]
+pub fn set_escdelay(x: i32) {}
 
 #[derive(PartialEq, Debug)]
 enum OpenPanel {
@@ -38,7 +43,7 @@ pub struct Controller {
     commit_msg_mode: CommitMsgMode,
 
     git: Git,
-    win: Window,
+    pub win: Window,
 
     status_layer: Layer,
     pre_commit_layer: Layer,
@@ -120,46 +125,54 @@ impl Controller {
     }
 
     pub fn render(&self) {
-        clear();
+        self.win.win.clear();
         if self.open_panel == OpenPanel::STAGING {
-            self.status_layer.render(Coord::new(0, 0));
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::COMMITING {
-            self.status_layer.render(Coord::new(0, 0));
-            self.pre_commit_layer.render(Coord::new(
-                0,
-                self.win.get_size().y - self.pre_commit_layer.size().y - 1,
-            ));
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
+            self.pre_commit_layer.render(
+                &self.win.win,
+                Coord::new(
+                    0,
+                    self.win.get_size().y - self.pre_commit_layer.size().y - 1,
+                ),
+            );
         }
         if self.open_panel == OpenPanel::COMMITMSG {
-            self.commit_msg_layer.render(Coord::new(0, 0));
+            self.commit_msg_layer
+                .render(&self.win.win, Coord::new(0, 0));
         }
         if self.open_panel == OpenPanel::HELP {
-            self.status_layer.render(Coord::new(0, 0));
-            self.help_layer.render(Coord::new(
-                0,
-                self.win.get_size().y - self.help_layer.size().y - 1,
-            ));
+            self.status_layer.render(&self.win.win, Coord::new(0, 0));
+            self.help_layer.render(
+                &self.win.win,
+                Coord::new(0, self.win.get_size().y - self.help_layer.size().y - 1),
+            );
         }
 
         let mut i = 0;
         for thing in &self.enabled_commit_args {
-            mvaddstr(20 + i, 20, thing);
+            self.win.win.mvaddstr(20 + i, 20, thing);
             i += 1;
         }
 
         if self.open_panel != OpenPanel::COMMITMSG {
-            let on_cursor = mvinch(self.cursor.y, self.cursor.x);
+            let on_cursor = self.win.win.mvinch(self.cursor.y, self.cursor.x);
             // Mask out all color bits and apply the "selected" colors
-            mvaddch(
+            self.win.win.mvaddch(
                 self.cursor.y,
                 self.cursor.x,
-                on_cursor & (!COLOR_PAIR(0xFF)) | COLOR_PAIR(COLOR_PAIR_SELECTED),
+                on_cursor & (!COLOR_PAIR(0xFF)) | COLOR_PAIR(COLOR_PAIR_SELECTED.into()),
             );
         }
-        mvaddch(15, 0, self.last_char as u32);
-        mvaddstr(16, 0, &format!("{:?}", self.open_panel));
-        mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
+        self.win.win.mvaddch(15, 0, self.last_char);
+        self.win
+            .win
+            .mvaddstr(16, 0, &format!("{:?}", self.open_panel));
+        self.win
+            .win
+            .mvaddstr(19, 0, &format!("Debug msg: {:?}", self.debug_string));
 
         if self.push_status != String::from("") {
             let pos = Coord::new(0, self.fl3_pos.y + self.fl3_vec.len() as i32 + 1);
@@ -167,7 +180,7 @@ impl Controller {
             push_msg.content = self.push_status.clone();
             push_msg.style = TextStyle::BOLD;
             push_msg.c_pair = COLOR_PAIR_H1;
-            push_msg.render(pos);
+            push_msg.render(&self.win.win, pos);
         }
 
         self.win.render();
@@ -281,6 +294,7 @@ impl Controller {
             }
             */
         }
+        self.debug_string = format!("{:?}", key);
         self.update_status_layer();
         self.update_pre_commit_layer();
         self.update_help_layer();
@@ -489,7 +503,7 @@ impl Controller {
         push_msg.style = TextStyle::BOLD;
         push_msg.c_pair = COLOR_PAIR_SELECTED;
 
-        push_msg.render(pos);
-        refresh();
+        push_msg.render(&self.win.win, pos);
+        self.win.render();
     }
 }

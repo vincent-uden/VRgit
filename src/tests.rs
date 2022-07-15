@@ -19,7 +19,10 @@ mod tests {
             ("gg", Action::CursorBufferStart),
             ("G", Action::CursorBufferEnd),
             ("<Esc>", Action::Exit),
-        ].iter().map(|(c, a)| (String::from(*c), *a)).collect();
+        ]
+        .iter()
+        .map(|(c, a)| (String::from(*c), *a))
+        .collect();
 
         let mut mode: StageMode = Mode::new();
 
