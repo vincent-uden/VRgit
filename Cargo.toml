@@ -3,6 +3,8 @@ name = "vrgit"
 version = "0.1.0"
 authors = ["Vincent Udén <vincentuden@gmail.com>"]
 edition = "2018"
+description = "An EXPERIMENTAL tui for git"
+license="MIT"
 
 [[bin]]
 name = "vrgit"
